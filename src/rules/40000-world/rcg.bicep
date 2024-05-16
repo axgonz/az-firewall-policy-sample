@@ -15,6 +15,8 @@ resource rcg 'Microsoft.Network/firewallPolicies/ruleCollectionGroups@2023-11-01
     priority: priority
     ruleCollections: [
       rc1000.outputs.rc
+      rc2000.outputs.rc
+      rc3000.outputs.rc
     ]
   }
 }
@@ -32,5 +34,13 @@ module rc2000 '2000-bar.bicep' = {
   params: {
     name: 'bar'
     priority: 2000
+  }
+}
+
+module rc3000 '3000-baz.bicep' = {
+  name: '${deployment().name}_3000-baz'
+  params: {
+    name: 'baz'
+    priority: 3000
   }
 }
