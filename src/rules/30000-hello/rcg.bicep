@@ -14,13 +14,14 @@ resource rcg 'Microsoft.Network/firewallPolicies/ruleCollectionGroups@2023-11-01
   properties: {
     priority: priority
     ruleCollections: [
-      rc1000.outputs.rc
-      rc2000.outputs.rc
+      rc1000_foo.outputs.rc
+      rc2000_bar.outputs.rc
     ]
   }
 }
 
-module rc1000 '1000-foo.bicep' = {
+// @rc:1000:foo
+module rc1000_foo '1000-foo.bicep' = {
   name: '${deployment().name}_1000-foo'
   params: {
     name: 'foo'
@@ -28,7 +29,8 @@ module rc1000 '1000-foo.bicep' = {
   }
 }
 
-module rc2000 '2000-bar.bicep' = {
+// @rc:2000:bar
+module rc2000_bar '2000-bar.bicep' = {
   name: '${deployment().name}_2000-bar'
   params: {
     name: 'bar'

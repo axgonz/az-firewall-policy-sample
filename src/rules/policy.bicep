@@ -7,7 +7,8 @@ resource policy 'Microsoft.Network/firewallPolicies@2023-11-01' = {
   location: location
 }
 
-module rcg30000 '30000-hello/rcg.bicep' = {
+// @rcg:30000:hello
+module rcg30000_hello '30000-hello/rcg.bicep' = {
   name: '${deployment().name}_30000-hello'
   params: {
     parentPolicyName: policy.name
@@ -16,7 +17,8 @@ module rcg30000 '30000-hello/rcg.bicep' = {
   }
 }
 
-module rcg40000 '40000-world/rcg.bicep' = {
+// @rcg:40000:world
+module rcg40000_world '40000-world/rcg.bicep' = {
   name: '${deployment().name}_40000-world'
   params: {
     parentPolicyName: policy.name
@@ -24,6 +26,6 @@ module rcg40000 '40000-world/rcg.bicep' = {
     priority: 40000
   }
   dependsOn: [
-    rcg30000
+    rcg30000_hello
   ]
 }
