@@ -1,0 +1,39 @@
+{
+	"name": "az-fw-bicep-macros",
+	"private": true,
+	"displayName": "Azure Firewall Bicep Macros",
+	"version": "0.0.2",
+	"publisher": "axgonz",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/axgonz/az-firewall-policy-sample"
+	},
+	"bugs": {
+		"url": "https://github.com/axgonz/az-firewall-policy-sample/issues"
+	},
+	"engines": {
+		"vscode": "^1.73.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onLanguage:bicep"
+	],
+	"main": "./out/extension.js",
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"lint": "eslint \"src/**/*.ts\"",
+		"watch": "tsc -watch -p ./",
+		"package": "vsce package -o ../extension/"
+	},
+	"devDependencies": {
+		"@types/node": "^18",
+		"@types/vscode": "^1.73.0",
+		"@typescript-eslint/eslint-plugin": "^6.7.0",
+		"@typescript-eslint/parser": "^6.7.0",
+		"eslint": "^8.26.0",
+		"typescript": "^5.4.2"
+	}
+}
