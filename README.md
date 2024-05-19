@@ -38,7 +38,7 @@ Assumed operating system is Linux ([WSL](https://learn.microsoft.com/en-us/windo
 
 You can easily add new firewall rule collection groups or firewall rule collections using the decorators provided with the .vsix extension.
 
-Install the provided extension or it's [README](macros/repo/README.md) to learn more.
+Install the provided extension or view it's [README](macros/repo/README.md) to learn more.
 
 ### Deploy
 
