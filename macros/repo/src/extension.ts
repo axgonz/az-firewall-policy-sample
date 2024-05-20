@@ -18,7 +18,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 type DecoratorSuffixParts = {
 	priority: string
-	name: string
+	deploymentName: string
+	symbolicName: string
+	fileName: string
 	deploymentNameSeparator: string
 	symbolicNameSeparator: string
 	fileNameSeparator: string
@@ -33,8 +35,15 @@ export class Macros implements vscode.CodeActionProvider {
 	public provideCodeActions(document: vscode.TextDocument, range: vscode.Range): vscode.CodeAction[] | undefined {
 		let actions: Array<vscode.CodeAction> = []
 		if (this.hasDecorator('// @rc:', document, range)) {
-			actions.push(this.addRcAction(document, range, this.getDecoratorSuffix('// @rc:', document, range)))
+			actions.push(this.addRcAction(document, range, 'NAT', this.getDecoratorSuffix('// @rc:', document, range)))
 		}
+		if (this.hasDecorator('// @rc:', document, range)) {
+			actions.push(this.addRcAction(document, range, 'NET', this.getDecoratorSuffix('// @rc:', document, range)))
+		}
+		if (this.hasDecorator('// @rc:', document, range)) {
+			actions.push(this.addRcAction(document, range, 'APP', this.getDecoratorSuffix('// @rc:', document, range)))
+		}
+
 		if (this.hasDecorator('// @rcg:', document, range)) {
 			actions.push(this.addRcgAction(document, range, this.getDecoratorSuffix('// @rcg:', document, range)))
 		}
@@ -131,9 +140,20 @@ export class Macros implements vscode.CodeActionProvider {
 			priority = suffix.split(':')[0]
 		}
 
+		const deploymentName = name
+			.replace('.','-')
+			.replace(' ','-');
+		const symbolicName = name
+			.replace('-','_')
+			.replace('.','_')
+			.replace(' ','_');
+		const fileName = name
+
 		return {
 			priority: priority,
-			name: name,
+			deploymentName: deploymentName,
+			symbolicName: symbolicName,
+			fileName: fileName,
 			deploymentNameSeparator: deploymentNameSeparator,
 			symbolicNameSeparator: symbolicNameSeparator,
 			fileNameSeparator: fileNameSeparator
@@ -142,19 +162,14 @@ export class Macros implements vscode.CodeActionProvider {
 
 	private generateRc(suffixParts: DecoratorSuffixParts) {
 		const p = suffixParts.priority
-		const dn = suffixParts.name
-			.replace('.','-')
-			.replace(' ','-');
-		const sn = suffixParts.name
-			.replace('-','_')
-			.replace('.','_')
-			.replace(' ','_');
-		const n = suffixParts.name
+		const dn = suffixParts.deploymentName
+		const sn = suffixParts.symbolicName
+		const fn = suffixParts.fileName
 		const ds = suffixParts.deploymentNameSeparator
 		const ss = suffixParts.symbolicNameSeparator
 		const fs = suffixParts.fileNameSeparator
 		const lines = [
-			`module rc${p}${ss}${sn} '${p}${fs}${n}.bicep' = {`,
+			`module rc${p}${ss}${sn} '${p}${fs}${fn}.bicep' = {`,
 			`  name: '\${deployment().name}_${p}${ds}${dn}'`,
 			`  params: {`,
 			`    name: '${dn}'`,
@@ -172,19 +187,14 @@ export class Macros implements vscode.CodeActionProvider {
 
 	private generateRcg(suffixParts: DecoratorSuffixParts) {
 		const p = suffixParts.priority
-		const dn = suffixParts.name
-			.replace('.','-')
-			.replace(' ','-');
-		const sn = suffixParts.name
-			.replace('-','_')
-			.replace('.','_')
-			.replace(' ','_');
-		const n = suffixParts.name
+		const dn = suffixParts.deploymentName
+		const sn = suffixParts.symbolicName
+		const fn = suffixParts.fileName
 		const ds = suffixParts.deploymentNameSeparator
 		const ss = suffixParts.symbolicNameSeparator
 		const fs = suffixParts.fileNameSeparator
 		const lines = [
-			`module rcg${p}${ss}${sn} '${p}${fs}${n}/rcg.bicep' = {`,
+			`module rcg${p}${ss}${sn} '${p}${fs}${fn}/rcg.bicep' = {`,
 			`  name: '\${deployment().name}_${p}${ds}${dn}'`,
 			`  params: {`,
 			`    parentPolicyName: policy.name`,
@@ -204,16 +214,95 @@ export class Macros implements vscode.CodeActionProvider {
 		}
 	}
 
-	private static createRcFile = async (document: vscode.TextDocument, suffixParts: DecoratorSuffixParts) => {
+	private static updateRcgCollection(document: vscode.TextDocument, suffixParts: DecoratorSuffixParts) {
+		let exists = false
+		let markerLineNumber = 0
+		let bracketLineNumber = 0
+
+		// find marker "ruleCollections: ["
+		for (let i = 0; i < document.lineCount; i++) {
+			let line = document.lineAt(i)
+			if (line.text.includes('ruleCollections: [')) {
+				exists = true
+				markerLineNumber = line.lineNumber
+				break
+			}
+		}
+
+		if (!exists) {
+			return
+		}
+
+		// locate closing bracket "]"
+		for (let i = markerLineNumber; i < document.lineCount; i++) {
+			let line = document.lineAt(i)
+			if (line.text.includes(']')) {
+				bracketLineNumber = line.lineNumber
+				break
+			}
+		}
+
+		let textWrite = `\n      rc${suffixParts.priority}${suffixParts.symbolicNameSeparator}${suffixParts.symbolicName}.outputs.rc`
+		if (markerLineNumber == bracketLineNumber) {
+			textWrite = `${textWrite}\n    `
+		}
+		if (markerLineNumber > bracketLineNumber) {
+			textWrite = `${textWrite}\n    ]`
+		}
+
+		let lineNumber = 0
+		let lineLength = 0
+		if (markerLineNumber >= bracketLineNumber) {
+			lineNumber = markerLineNumber
+			lineLength = document.lineAt(lineNumber).text.lastIndexOf('[') + 1
+		}
+		if (markerLineNumber < bracketLineNumber) {
+			lineNumber = bracketLineNumber - 1
+			lineLength = document.lineAt(lineNumber).range.end.character
+		}
+
+		const insertPosition: vscode.Position = new vscode.Position(lineNumber, lineLength)
+
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+            const document = editor.document;
+            editor.edit(editBuilder => {
+				editBuilder.insert(insertPosition, textWrite)
+			})
+		}
+	}
+
+	private static createRcFile = async (document: vscode.TextDocument, rcType: string, suffixParts: DecoratorSuffixParts) => {
 		const parentDir = document.uri.path.substring(0, document.uri.path.lastIndexOf('/'))
-		const moduleName = `${suffixParts.priority}${suffixParts.fileNameSeparator}${suffixParts.name}`
+		const moduleName = `${suffixParts.priority}${suffixParts.fileNameSeparator}${suffixParts.fileName}`
 		const fileUri = vscode.Uri.file(posix.join(parentDir, `${moduleName}.bicep`))
+
+		this.updateRcgCollection(document, suffixParts)
 
 		try {
 			await vscode.workspace.fs.stat(fileUri)
 			return
 		}
 		catch {}
+
+		let rule_action = 'DNAT'
+		let rule_type = 'natRuleCollection'
+		let rule_ruleCollectionType = 'FirewallPolicyNatRuleCollection'
+
+		switch (rcType) {
+			case 'NET': {
+				rule_action = 'Allow'
+				rule_type = 'networkRuleCollection'
+				rule_ruleCollectionType = 'FirewallPolicyFilterRuleCollection'
+				break
+			}
+			case 'APP': {
+				rule_action = 'Allow'
+				rule_type = 'applicationRuleCollection'
+				rule_ruleCollectionType = 'FirewallPolicyFilterRuleCollection'
+				break
+			}
+		}
 
 		const writeLines = [
 			`import {natRuleCollection, networkRuleCollection, applicationRuleCollection} from '../../types/ruleCollections.bicep'`,
@@ -223,12 +312,12 @@ export class Macros implements vscode.CodeActionProvider {
 			`param name string`,
 			`param priority int`,
 			``,
-			`output rc networkRuleCollection = {`,
+			`output rc ${rule_type} = {`,
 			`  name: name`,
 			`  priority: priority`,
-			`  ruleCollectionType: 'FirewallPolicyFilterRuleCollection'`,
+			`  ruleCollectionType: '${rule_ruleCollectionType}'`,
 			`  action: {`,
-			`    type: 'Allow'`,
+			`    type: '${rule_action}'`,
 			`  }`,
 			`  rules:[`,
 			`    {`,
@@ -245,7 +334,7 @@ export class Macros implements vscode.CodeActionProvider {
 
 	private static createRcgFile = async (document: vscode.TextDocument, suffixParts: DecoratorSuffixParts) => {
 		const parentDir = document.uri.path.substring(0, document.uri.path.lastIndexOf('/'))
-		const moduleName = `${suffixParts.priority}${suffixParts.fileNameSeparator}${suffixParts.name}`
+		const moduleName = `${suffixParts.priority}${suffixParts.fileNameSeparator}${suffixParts.fileName}`
 		const fileUri = vscode.Uri.file(posix.join(parentDir, moduleName, 'rcg.bicep'))
 
 		try {
@@ -271,10 +360,11 @@ export class Macros implements vscode.CodeActionProvider {
 			`  properties: {`,
 			`    priority: priority`,
 			`    ruleCollections: [`,
-			`      `,
 			`    ]`,
 			`  }`,
-			`}`
+			`}`,
+			``,
+			`// @rc:`
 		]
 		const writeStr = writeLines.join(`\n`);
 		const writeData = Buffer.from(writeStr, 'utf8');
@@ -290,8 +380,8 @@ export class Macros implements vscode.CodeActionProvider {
 		vscode.commands.registerCommand('az-fw-bicep-macro.create-rcg-file', Macros.createRcgFile)
 	}
 
-	private addRcAction(document: vscode.TextDocument, range: vscode.Range, suffix: string): vscode.CodeAction {
-		const action = new vscode.CodeAction(`Add rc${suffix.split(':')[0]}`, vscode.CodeActionKind.QuickFix);
+	private addRcAction(document: vscode.TextDocument, range: vscode.Range, rcType: string, suffix: string): vscode.CodeAction {
+		const action = new vscode.CodeAction(`Add ${rcType} rc${suffix.split(':')[0]}`, vscode.CodeActionKind.QuickFix);
 		const line = document.lineAt(range.end.line)
 		const insertPosition: vscode.Position = new vscode.Position(range.end.line, line.text.length)
 		const suffixParts = this.getDecoratorSuffixParts(suffix)
@@ -301,7 +391,7 @@ export class Macros implements vscode.CodeActionProvider {
 		action.command = {
 			command: 'az-fw-bicep-macro.create-rc-file',
 			title: 'Create Rc File',
-			arguments: [document, suffixParts]
+			arguments: [document, rcType, suffixParts]
 		}
 		return action;
 	}
