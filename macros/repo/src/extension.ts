@@ -175,7 +175,9 @@ export class Macros implements vscode.CodeActionProvider {
 			`    name: '${dn}'`,
 			`    priority: ${p}`,
 			`  }`,
-			`}`
+			`}`,
+			``,
+			`// @rc:`
 		]
 		const text = `\n${lines.join(`\n`)}`
 
@@ -204,7 +206,9 @@ export class Macros implements vscode.CodeActionProvider {
 			`  dependsOn: [`,
 			`    `,
 			`  ]`,
-			`}`
+			`}`,
+			``,
+			`// @rcg:`
 		]
 		const text = `\n${lines.join(`\n`)}`
 
