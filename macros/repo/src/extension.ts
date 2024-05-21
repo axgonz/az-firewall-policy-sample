@@ -100,7 +100,7 @@ export class Macros implements vscode.CodeActionProvider {
 				}
 			}
 			if (decorator === '// @rcg:') {
-				const rcg = this.generateRcg(suffixParts)
+				const rcg = this.generateRcg(suffixParts, '')
 				if (nextLine.text === rcg.lines[0]) {
 					return false
 				}
@@ -187,7 +187,7 @@ export class Macros implements vscode.CodeActionProvider {
 		}
 	}
 
-	private generateRcg(suffixParts: DecoratorSuffixParts) {
+	private generateRcg(suffixParts: DecoratorSuffixParts, previousRcgSymbolicName: string) {
 		const p = suffixParts.priority
 		const dn = suffixParts.deploymentName
 		const sn = suffixParts.symbolicName
@@ -203,13 +203,17 @@ export class Macros implements vscode.CodeActionProvider {
 			`    name: '${dn}'`,
 			`    priority: ${p}`,
 			`  }`,
-			`  dependsOn: [`,
-			`    `,
-			`  ]`,
 			`}`,
 			``,
 			`// @rcg:`
 		]
+
+		if (previousRcgSymbolicName.length > 0) {
+			lines.splice(7, 0, `  dependsOn: [`)
+			lines.splice(8, 0, `    ${previousRcgSymbolicName}`)
+			lines.splice(9, 0, `  ]`)
+		}
+
 		const text = `\n${lines.join(`\n`)}`
 
 		return {
@@ -218,21 +222,61 @@ export class Macros implements vscode.CodeActionProvider {
 		}
 	}
 
-	private static updateRcgCollection(document: vscode.TextDocument, suffixParts: DecoratorSuffixParts) {
+	private getPreviousRcgSymbolicName(document: vscode.TextDocument): string {
 		let exists = false
-		let markerLineNumber = 0
-		let bracketLineNumber = 0
+		let markerLineText = ''
 
-		// find marker "ruleCollections: ["
-		for (let i = 0; i < document.lineCount; i++) {
+		for (let i = document.lineCount - 1; i > - 1; i--) {
 			let line = document.lineAt(i)
-			if (line.text.includes('ruleCollections: [')) {
+			if (line.text.includes(`module rcg`) && line.text.includes(`/rcg.bicep' = {`)) {
 				exists = true
-				markerLineNumber = line.lineNumber
+				markerLineText = line.text
 				break
 			}
 		}
+		if (!exists) {
+			return ''
+		}
 
+		return markerLineText.split(' ')[1]
+	}
+
+	private static updateRcgCollection(document: vscode.TextDocument, suffixParts: DecoratorSuffixParts) {
+		const lines = [`  rc${suffixParts.priority}${suffixParts.symbolicNameSeparator}${suffixParts.symbolicName}.outputs.rc`]
+		this.appendBicepArray(document, 'ruleCollections: [', lines)
+	}
+
+	private static appendBicepArray(document: vscode.TextDocument, marker: string, lines: Array<string>, reverseSearchDirection?: boolean) {
+		let exists = false
+		let markerLineText = ''
+		let markerLineNumber = 0
+		let bracketLineNumber = 0
+
+		// find marker eg: "ruleCollections: ["
+		if (reverseSearchDirection) {
+			for (let i = document.lineCount - 1; i > -1 ; i--) {
+				let line = document.lineAt(i)
+				if (line.text.includes(marker)) {
+					exists = true
+					markerLineNumber = line.lineNumber
+					markerLineText = line.text
+					break
+				}
+			}
+			if (!exists) {
+				return
+			}
+		}
+
+		for (let i = 0; i < document.lineCount; i++) {
+			let line = document.lineAt(i)
+			if (line.text.includes(marker)) {
+				exists = true
+				markerLineNumber = line.lineNumber
+				markerLineText = line.text
+				break
+			}
+		}
 		if (!exists) {
 			return
 		}
@@ -246,12 +290,13 @@ export class Macros implements vscode.CodeActionProvider {
 			}
 		}
 
-		let textWrite = `\n      rc${suffixParts.priority}${suffixParts.symbolicNameSeparator}${suffixParts.symbolicName}.outputs.rc`
+		let indentation = markerLineText.substring(0,markerLineText.lastIndexOf(marker)).replace(marker,'')
+		lines[0] = `${indentation}${lines[0]}`
 		if (markerLineNumber == bracketLineNumber) {
-			textWrite = `${textWrite}\n    `
+			lines.push(`${indentation}`)
 		}
 		if (markerLineNumber > bracketLineNumber) {
-			textWrite = `${textWrite}\n    ]`
+			lines.push(`${indentation}]`)
 		}
 
 		let lineNumber = 0
@@ -265,6 +310,7 @@ export class Macros implements vscode.CodeActionProvider {
 			lineLength = document.lineAt(lineNumber).range.end.character
 		}
 
+		const textWrite = `\n${lines.join('\n')}`
 		const insertPosition: vscode.Position = new vscode.Position(lineNumber, lineLength)
 
         const editor = vscode.window.activeTextEditor;
@@ -401,11 +447,12 @@ export class Macros implements vscode.CodeActionProvider {
 	}
 
 	private addRcgAction(document: vscode.TextDocument, range: vscode.Range, suffix: string): vscode.CodeAction {
-		const action = new vscode.CodeAction(`Add rcg${suffix.split(':')[0]}`, vscode.CodeActionKind.QuickFix);
+		const action = new vscode.CodeAction(`Add new rcg${suffix.split(':')[0]}`, vscode.CodeActionKind.QuickFix);
 		const line = document.lineAt(range.end.line)
 		const insertPosition: vscode.Position = new vscode.Position(range.end.line, line.text.length)
 		const suffixParts = this.getDecoratorSuffixParts(suffix)
-		const rcg = this.generateRcg(suffixParts)
+		const previousRcgSymbolicName = this.getPreviousRcgSymbolicName(document)
+		const rcg = this.generateRcg(suffixParts, previousRcgSymbolicName)
 		action.edit = new vscode.WorkspaceEdit();
 		action.edit.insert(document.uri, insertPosition, rcg.text)
 		action.command = {
