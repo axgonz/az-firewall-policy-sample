@@ -4,7 +4,7 @@ This extension accompanies [axgonz/az-firewall-policy-sample (github.com)](https
 
 Provides decorators for quickly authoring code snippets that align with the module file tree used in the above sample.
 
-![az-fw-bicep-macros.gif](docs/az-fw-bicep-macros.gif)
+![az-fw-bicep-macros.gif](https://raw.githubusercontent.com/axgonz/az-firewall-policy-sample/2b07d9c3d3d62996d9447b043876139557f352df/macros/repo/docs/az-fw-bicep-macros.gif)
 
 ## Usage
 
