@@ -2,7 +2,7 @@
 	"name": "az-fw-bicep-macros",
 	"private": true,
 	"displayName": "Azure Firewall Bicep Macros",
-	"version": "0.0.6",
+	"version": "0.0.7",
 	"publisher": "axgonz",
 	"repository": {
 		"type": "git",

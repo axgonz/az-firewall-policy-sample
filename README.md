@@ -27,7 +27,7 @@ Assumed operating system is Linux ([WSL](https://learn.microsoft.com/en-us/windo
 
     ``` bash
     # Install the extension from .vsix file
-    code --install-extension "macros/extension/az-fw-bicep-macros-0.0.6.vsix"
+    code --install-extension "macros/extension/az-fw-bicep-macros-0.0.7.vsix"
     ```
 
     > Note: If you have never manually installed a VS Code extension before please read [Install from a VSIX](https://code.visualstudio.com/docs/editor/extension-marketplace#_install-from-a-vsix).
