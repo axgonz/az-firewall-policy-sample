@@ -447,7 +447,7 @@ export class Macros implements vscode.CodeActionProvider {
 	}
 
 	private addRcgAction(document: vscode.TextDocument, range: vscode.Range, suffix: string): vscode.CodeAction {
-		const action = new vscode.CodeAction(`Add new rcg${suffix.split(':')[0]}`, vscode.CodeActionKind.QuickFix);
+		const action = new vscode.CodeAction(`Add rcg${suffix.split(':')[0]}`, vscode.CodeActionKind.QuickFix);
 		const line = document.lineAt(range.end.line)
 		const insertPosition: vscode.Position = new vscode.Position(range.end.line, line.text.length)
 		const suffixParts = this.getDecoratorSuffixParts(suffix)
