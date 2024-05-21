@@ -4,6 +4,8 @@ This extension accompanies [axgonz/az-firewall-policy-sample (github.com)](https
 
 Provides decorators for quickly authoring code snippets that align with the module file tree used in the above sample.
 
+![az-fw-bicep-macros.gif](docs/az-fw-bicep-macros.gif)
+
 ## Usage
 
 ### Firewall rule collection groups
