@@ -10,7 +10,7 @@ Provides decorators for quickly authoring code snippets that align with the modu
 
 ### Firewall rule collection groups
 
-Use `// @rcg:<port>:<name>` + `Ctrl+.` to generate a rule collection group code snippet.
+Use `// @rcg:<priority>:<name>` + `Ctrl+.` to generate a rule collection group code snippet.
 
 Decorator:
 
@@ -36,7 +36,7 @@ module rcg30000_hello_world '30000-hello-world/rcg.bicep' = {
 
 ### Firewall rule collections
 
-Use `// @rc:<port>:<name>` + `Ctrl+.` to generate a rule collection code snippet.
+Use `// @rc:<priority>:<name>` + `Ctrl+.` to generate a rule collection code snippet.
 
 Decorator:
 
